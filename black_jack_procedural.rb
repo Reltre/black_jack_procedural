@@ -27,7 +27,7 @@ SUITS = ["Clubs","Spades","Hearts","Diamonds"]
 
 def generate_deck
   deck = []
-  SUITS.each {|s| DECK.keys.each {|c| deck << [c,s] } }
+  SUITS.each { |suit| DECK.keys.each {|card| deck << [card,suit] } }
   deck
 end
 
@@ -37,10 +37,6 @@ def setup_decks
     number_of_decks.times {deck += generate_deck}
     deck
 end 
-
-def deck_shuffle(deck)
-  deck.shuffle
-end
 
 def deal_card(shuffled_deck)
   shuffled_deck.pop
@@ -60,7 +56,7 @@ def display_cards(hand,name,computer_turn)
 and one card face down"
   else
     puts "#{name}'s Hand: "
-    hand.each {|c| puts "#{c[0]} of #{c[1]}" }  
+    hand.each {|card| puts "#{card[0]} of #{card[1]}" }  
   end
 
   print "\n\n"
@@ -92,7 +88,12 @@ def say_results(player_hand,computer_hand,player_total,computer_total,name)
   elsif (player_total < computer_total) 
     puts "Computer Wins."
   else
-    if (blackjack?(player_hand,player_total) && 
+    say_blackjack(player_hand,computer_hand,player_total,computer_total,name)
+  end
+end
+
+def say_blackjack(player_hand,computer_hand,player_total,computer_total,name)
+  if (blackjack?(player_hand,player_total) && 
         blackjack?(computer_hand,computer_total))
       puts "Push."
     elsif (blackjack?(player_hand,player_total) &&
@@ -104,32 +105,37 @@ def say_results(player_hand,computer_hand,player_total,computer_total,name)
     else
       puts "Push."
     end
-  end
 end
 
-def initial_player_total(hand,ace = 0)
+def initial_player_total(hand)
+  ace = 0
   result = 
-  hand.inject(0) do |memo,c| 
-    if c[0] == "Ace" 
-      ace = one_or_eleven(c)
-      memo += ace
+  hand.inject(0) do |total,card| 
+    if card[0] == "Ace" 
+      ace = one_or_eleven(card)
+      total += ace
     else
-      memo += DECK[c[0]]
+      total += DECK[card[0]]
     end
   end
-  result 
+
+  return result 
 end
 
-def handle_ace_values(total,card,aces)
-    while total > 21 && aces != 0 
-      total = total - DECK[card[0]][1] + DECK[card[0]][0]
-      aces -= 1
+def handle_ace_values(total,hand)
+  i = 0
+  while total > 21  
+    if ace?(hand[i])
+      total = total - DECK[hand[i][0]][0] + DECK[hand[i][0]][1]
     end
+  i += 1   
+  end
 
-    return total
+  return total
 end
 
-def compute_total(hand,total)
+def compute_total(hand)
+  total = 0
   ace_count = 0
   hand.each do |card|  
     if(ace?(card))
@@ -138,12 +144,11 @@ def compute_total(hand,total)
     else
       total += DECK[card[0]]
     end
-
-    if total > 21
-        total = handle_ace_values(total,card, ace_count)
-      end
-    
   end
+
+  if total > 21 && ace_count != 0
+    total = handle_ace_values(total,hand)
+  end  
 
   return total
 end
@@ -181,15 +186,13 @@ def bust?(card_total)
     card_total > 21
 end
 
-#Ask for player's name
+
 puts "Please enter your name."
 player_name = gets.chomp
 system 'clear'
 
-#Loop through the game.
-begin
-  
 
+begin
   play_again = false
 
   player_card_total = 0
@@ -198,9 +201,9 @@ begin
   player_hand = []
   
   decks_to_use = setup_decks
-  #Shuffle the decks twice
-  shuffled_deck = deck_shuffle(decks_to_use)
-  shuffled_deck = deck_shuffle(decks_to_use)
+  
+  shuffled_deck = decks_to_use.shuffle
+  shuffled_deck = decks_to_use.shuffle
   
   deal_cards(computer_hand,player_hand,shuffled_deck)
   
@@ -213,15 +216,13 @@ begin
 
   display_total(player_card_total,computer_card_total,player_name)
   
-  #Run through players hand
+
   begin 
     puts "Hit or Stay?"
     answer = gets.chomp.downcase 
-    system 'clear'
-    next if answer != 'hit'
     
+    break if answer != 'hit'
     
-
     player_hand << deal_card(shuffled_deck)
     player_card_total += add_to_player_total(player_hand.last)
   
@@ -233,43 +234,65 @@ begin
       say_bust(player_name)
       break
     end
-  
   end while answer == 'hit' 
   
-  #If player busted, ask if they want to play again?
+
   if bust?(player_card_total) 
     puts "Play again?(y/n)"
     answer = gets.chomp.downcase
-    answer == 'y' ? redo : puts("Thanks for playing"); break 
+    if answer == 'y' 
+      system 'clear'
+      redo
+    else 
+      puts("Thanks for playing") 
+      exit
+    end 
   end
 
-  #Run through computer's hand
+  
   begin 
-    computer_card_total = 0
+    computer_card_total = compute_total(computer_hand)
+
+    if computer_card_total >= 17
+      display_cards(computer_hand,"Computer",true)
+      display_cards(player_hand,player_name,true)
+      display_total(player_card_total,computer_card_total,player_name)
+      break
+    end
+
     computer_hand << deal_card(shuffled_deck)
-    computer_card_total = compute_total(computer_hand,computer_card_total)
   
     display_cards(computer_hand,"Computer",true)
     display_cards(player_hand,player_name,true)
     display_total(player_card_total,computer_card_total,player_name)
-  
-    if bust?(computer_card_total)
-      say_bust("Computer")
-      break
-    end
-  
   end until computer_card_total >= 17
   
-  if !bust?(computer_card_total)
-    say_results(player_hand,
-      computer_hand,player_card_total,
-      computer_card_total,
-      player_name)
+  if bust?(computer_card_total)
+    say_bust("Computer")
+    puts "Play again?(y/n)"
+    answer = gets.chomp.downcase
+    if answer == 'y' 
+      system 'clear'
+      redo
+    else 
+      puts("Thanks for playing") 
+      exit
+    end 
   end
 
-  puts "\nThat's the end of the round.  Would you like to play again?(y/n)"
+  say_results(player_hand,
+    computer_hand,player_card_total,
+    computer_card_total,player_name)
+
+
+  puts "\nThat's the end of the round.\nWould you like to play again?(y/n)"
   answer = gets.chomp.downcase
-  answer == 'y' ? play_again = true : puts("Thanks for playing")
+  if answer == 'y'
+    play_again = true
+    system 'clear'
+  else
+    puts("Thanks for playing")
+  end
 
 end while play_again == true && shuffled_deck.size > 20
  
