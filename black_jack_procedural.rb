@@ -31,6 +31,13 @@ def generate_deck
   deck
 end
 
+def setup_decks
+    deck = []
+    number_of_decks = [2,3,4,5,6].sample
+    number_of_decks.times {deck += generate_deck}
+    deck
+end 
+
 def deck_shuffle(deck)
   deck.shuffle
 end
@@ -181,43 +188,40 @@ system 'clear'
 
 #Loop through the game.
 begin
-  system  'clear'
+  
 
   play_again = false
 
   player_card_total = 0
   computer_card_total = 0
-
   computer_hand = []
   player_hand = []
-  #Create our deck.
-  #Between 2 and 6 decks are used in this game.
-  deck = []
-  number_of_decks = [2,3,4,5,6].sample
-  number_of_decks.times {deck += generate_deck}
   
+  decks_to_use = setup_decks
   #Shuffle the decks twice
-  shuffled_deck = deck_shuffle(deck)
-  shuffled_deck = deck_shuffle(deck)
+  shuffled_deck = deck_shuffle(decks_to_use)
+  shuffled_deck = deck_shuffle(decks_to_use)
   
   deal_cards(computer_hand,player_hand,shuffled_deck)
   
+
   display_cards(computer_hand,"Computer",false)
   display_cards(player_hand,player_name,false)
   
   player_card_total = initial_player_total(player_hand)
   computer_card_total = initial_computer_total(computer_hand)
+
   display_total(player_card_total,computer_card_total,player_name)
   
   #Run through players hand
   begin 
     puts "Hit or Stay?"
     answer = gets.chomp.downcase 
+    system 'clear'
     next if answer != 'hit'
     
-    system 'clear'
-   
-  
+    
+
     player_hand << deal_card(shuffled_deck)
     player_card_total += add_to_player_total(player_hand.last)
   
@@ -246,8 +250,7 @@ begin
     computer_card_total = compute_total(computer_hand,computer_card_total)
   
     display_cards(computer_hand,"Computer",true)
-    display_cards(player_hand,player_name,false)
-  
+    display_cards(player_hand,player_name,true)
     display_total(player_card_total,computer_card_total,player_name)
   
     if bust?(computer_card_total)
@@ -255,7 +258,7 @@ begin
       break
     end
   
-  end while computer_card_total < 17
+  end until computer_card_total >= 17
   
   if !bust?(computer_card_total)
     say_results(player_hand,
